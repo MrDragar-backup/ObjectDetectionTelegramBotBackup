@@ -37,7 +37,7 @@ def recognize_objects(image_path: str) -> dict[str, str]:
                         "text": 'Write me objects, which are on this picture. '
                                 'WRITE IN JSON FORMAT LIKE {"NAME_OF_OBJECT_IN_RUSSIAN": COUNT}. '
                                 'ANSWER IN RUSSIAN! DO NOT USE MARKDOWN'
-                                'IF THERE are any kind of PLATE and GROCERIES, write ONLY {"plate_of_groceries": count} without things it consists'
+                                'IF THERE are any kind of PLATE and GROCERIES, WRITE ONLY {"plate_of_groceries": count} IN ENGLISH! without things it consists'
                     },
                     {
                         "type": "image_url",
