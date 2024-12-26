@@ -60,7 +60,4 @@ async def handle_photo(message: Message):
             await message.reply(text)
         except Exception as ex:
             logging.debug(ex)
-            raise ex
             return await message.reply(f"Произошла ошибка при обработке тарелки")
-
-
