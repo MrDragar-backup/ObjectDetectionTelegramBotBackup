@@ -44,7 +44,7 @@ async def handle_photo(message: Message):
             return await message.reply(f"Объекты не найдены")
         if "plate_of_groceries" not in objects:
             result = [
-                label if count == 1 else f"{label} - {count}"
+                f"{label} - {count}"
                 for label, count in objects.items()
             ]
             text = f"Распознанные объекты: \n\n{"\n".join(result)}"
