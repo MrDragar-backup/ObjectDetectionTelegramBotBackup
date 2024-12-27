@@ -23,16 +23,6 @@ jobs:
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
 
-      - name: Create backup branch
-        id: create_branch
-        run: |
-          echo "Creating backup branch"
-          TIMESTAMP=$(TZ="Europe/Istanbul" date +"%Y-%m-%d-%H-%M")
-          BRANCH_NAME="backup-$TIMESTAMP"
-          echo "Branch name: $BRANCH_NAME"
-          git checkout -b $BRANCH_NAME
-          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
-
       - name: Add backup remote
         run: |
           echo "Adding remote backup repository"
@@ -42,14 +32,40 @@ jobs:
       - name: Pull changes from backup repository
         run: |
           echo "Pulling changes from backup repository"
-          git pull backup main --rebase || echo "No changes to pull"
+          git fetch backup main
+
+      - name: Check for new commits
+        id: check_commits
+        run: |
+          echo "Checking for new commits"
+          COMMITS_AHEAD=$(git rev-list HEAD --not backup/main --count)
+          if [ "$COMMITS_AHEAD" -gt 0 ]; then
+            echo "There are $COMMITS_AHEAD new commits. Proceeding with backup."
+            echo "HAS_NEW_COMMITS=true" >> $GITHUB_ENV
+          else
+            echo "No new commits. Skipping backup."
+            echo "HAS_NEW_COMMITS=false" >> $GITHUB_ENV
+          fi
+
+      - name: Create backup branch
+        if: env.HAS_NEW_COMMITS == 'true'
+        id: create_branch
+        run: |
+          echo "Creating backup branch"
+          TIMESTAMP=$(TZ="Europe/Istanbul" date +"%Y-%m-%d-%H-%M")
+          BRANCH_NAME="backup-$TIMESTAMP"
+          echo "Branch name: $BRANCH_NAME"
+          git checkout -b $BRANCH_NAME
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
       - name: Check PAT permissions
+        if: env.HAS_NEW_COMMITS == 'true'
         run: |
           echo "Checking PAT permissions"
           curl -H "Authorization: token ${{ secrets.PAT }}" https://api.github.com/user/repos
 
       - name: Push to backup repository
+        if: env.HAS_NEW_COMMITS == 'true'
         run: |
           echo "Pushing to remote repository"
-          git push backup ${{ env.BRANCH_NAME }} --force        
+          git push backup ${{ env.BRANCH_NAME }} --force
