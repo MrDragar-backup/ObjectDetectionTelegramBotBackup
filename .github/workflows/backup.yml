@@ -29,22 +29,31 @@ jobs:
           git remote add backup https://${{ secrets.PAT }}@github.com/MrDragar-backup/ObjectDetectionTelegramBotBackup
           git remote -v  # List remotes to verify
 
-      - name: Pull changes from backup repository
+      - name: Fetch all branches from backup repository
         run: |
-          echo "Pulling changes from backup repository"
-          git fetch backup main
+          echo "Fetching all branches from backup repository"
+          git fetch backup
 
-      - name: Check for new commits
-        id: check_commits
+      - name: Find the latest backup branch
+        id: find_latest_backup
         run: |
-          echo "Checking for new commits"
-          COMMITS_AHEAD=$(git rev-list HEAD --not backup/main --count)
-          if [ "$COMMITS_AHEAD" -gt 0 ]; then
-            echo "There are $COMMITS_AHEAD new commits. Proceeding with backup."
+          echo "Finding the latest backup branch"
+          LATEST_BACKUP_BRANCH=$(git branch -r | grep 'backup-' | sort -r | head -n 1 | sed 's/^ *backup\///')
+          if [ -z "$LATEST_BACKUP_BRANCH" ]; then
+            echo "No backup branches found. Proceeding with full backup."
             echo "HAS_NEW_COMMITS=true" >> $GITHUB_ENV
+            echo "LATEST_BACKUP_BRANCH=main" >> $GITHUB_ENV  # Fallback to main if no backup branches exist
           else
-            echo "No new commits. Skipping backup."
-            echo "HAS_NEW_COMMITS=false" >> $GITHUB_ENV
+            echo "Latest backup branch: $LATEST_BACKUP_BRANCH"
+            echo "LATEST_BACKUP_BRANCH=$LATEST_BACKUP_BRANCH" >> $GITHUB_ENV
+            COMMITS_AHEAD=$(git rev-list HEAD --not backup/$LATEST_BACKUP_BRANCH --count)
+            if [ "$COMMITS_AHEAD" -gt 0 ]; then
+              echo "There are $COMMITS_AHEAD new commits. Proceeding with backup."
+              echo "HAS_NEW_COMMITS=true" >> $GITHUB_ENV
+            else
+              echo "No new commits. Skipping backup."
+              echo "HAS_NEW_COMMITS=false" >> $GITHUB_ENV
+            fi
           fi
 
       - name: Create backup branch
