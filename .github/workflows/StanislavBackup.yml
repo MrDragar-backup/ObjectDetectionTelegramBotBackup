@@ -1,4 +1,4 @@
-name: Backup Repository
+name: Stanislav Backup
 
 on:
   schedule:
@@ -23,7 +23,41 @@ jobs:
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
 
+      - name: Add backup remote
+        run: |
+          echo "Adding remote backup repository"
+          git remote add backup https://${{ secrets.PAT }}@github.com/StanislavProg/Tehspec_Yaroslav
+          git remote -v  # List remotes to verify
+
+      - name: Fetch all branches from backup repository
+        run: |
+          echo "Fetching all branches from backup repository"
+          git fetch backup
+
+      - name: Find the latest backup branch
+        id: find_latest_backup
+        run: |
+          echo "Finding the latest backup branch"
+          LATEST_BACKUP_BRANCH=$(git branch -r | grep 'ObjectDetectionTelegramBot-backup-' | sort -r | head -n 1 | sed 's/^ *backup\///')
+          if [ -z "$LATEST_BACKUP_BRANCH" ]; then
+            echo "No backup branches found. Proceeding with full backup."
+            echo "HAS_NEW_COMMITS=true" >> $GITHUB_ENV
+            echo "LATEST_BACKUP_BRANCH=main" >> $GITHUB_ENV  # Fallback to main if no backup branches exist
+          else
+            echo "Latest backup branch: $LATEST_BACKUP_BRANCH"
+            echo "LATEST_BACKUP_BRANCH=$LATEST_BACKUP_BRANCH" >> $GITHUB_ENV
+            COMMITS_AHEAD=$(git rev-list HEAD --not backup/$LATEST_BACKUP_BRANCH --count)
+            if [ "$COMMITS_AHEAD" -gt 0 ]; then
+              echo "There are $COMMITS_AHEAD new commits. Proceeding with backup."
+              echo "HAS_NEW_COMMITS=true" >> $GITHUB_ENV
+            else
+              echo "No new commits. Skipping backup."
+              echo "HAS_NEW_COMMITS=false" >> $GITHUB_ENV
+            fi
+          fi
+
       - name: Create backup branch
+        if: env.HAS_NEW_COMMITS == 'true'
         id: create_branch
         run: |
           echo "Creating backup branch"
@@ -33,23 +67,14 @@ jobs:
           git checkout -b $BRANCH_NAME
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
-      - name: Add backup remote
-        run: |
-          echo "Adding remote backup repository"
-          git remote add backup https://${{ secrets.PAT }}@github.com/StanislavProg/Tehspec_Yaroslav
-          git remote -v  # List remotes to verify
-
-      - name: Pull changes from backup repository
-        run: |
-          echo "Pulling changes from backup repository"
-          git pull backup main --rebase || echo "No changes to pull"
-
       - name: Check PAT permissions
+        if: env.HAS_NEW_COMMITS == 'true'
         run: |
           echo "Checking PAT permissions"
           curl -H "Authorization: token ${{ secrets.PAT }}" https://api.github.com/user/repos
 
       - name: Push to backup repository
+        if: env.HAS_NEW_COMMITS == 'true'
         run: |
-          echo "Pushing to remote repository"
-          git push backup ${{ env.BRANCH_NAME }} --force        
+          echo "Pushing to remote repository ${{ env.BRANCH_NAME }}"
+          git push backup ${{ env.BRANCH_NAME }} --force      
