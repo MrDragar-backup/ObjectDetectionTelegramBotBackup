@@ -28,7 +28,7 @@ jobs:
         run: |
           echo "Creating backup branch"
           TIMESTAMP=$(TZ="Europe/Istanbul" date +"%Y-%m-%d-%H-%M")
-          BRANCH_NAME="backup-$TIMESTAMP"
+          BRANCH_NAME="ObjectDetectionTelegramBot-backup-$TIMESTAMP"
           echo "Branch name: $BRANCH_NAME"
           git checkout -b $BRANCH_NAME
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
